@@ -2,7 +2,7 @@ var trello = require('node-trello'),
     _ = require('lodash'),
     util = require('./util'),
     pickInputs = {
-        board_id: 'board_id'
+        board_id: { key: 'board_id', validate: { req: true } }
     },
     pickOutputs = {
         '-': {
@@ -23,17 +23,6 @@ var trello = require('node-trello'),
     };
 
 module.exports = {
-    authOptions: function (dexter) {
-        if (!dexter.environment('trello_api_key') || !dexter.environment('trello_token')) {
-            this.fail('A [trello_api_key] or [trello_token] environment variables are required for this module');
-            return false;
-        } else {
-            return {
-                api_key: dexter.environment('trello_api_key'),
-                token: dexter.environment('trello_token')
-            }
-        }
-    },
     /**
      * The main entry point for the Dexter module
      *
@@ -41,22 +30,17 @@ module.exports = {
      * @param {AppData} dexter Container for all data used in this workflow.
      */
     run: function(step, dexter) {
-        var auth = this.authOptions(dexter);
+        var credentials = dexter.provider('trello').credentials(),
+            t = new trello(_.get(credentials, 'consumer_key'), _.get(credentials, 'access_token'));
+        var inputs = util.pickInputs(step, pickInputs),
+            validationErrors = util.checkValidateErrors(inputs, pickInputs);
 
-        if (!auth) return;
+        if (validationErrors)
+            return this.fail(validationErrors);
 
-        var t = new trello(auth.api_key, auth.token);
-        var inputs = util.pickStringInputs(step, pickInputs);
-
-        if (_.isEmpty(inputs.board_id)) {
-            return this.fail('A [boardId] variable is required for this module');
-        } else {
-            var boardId = inputs.board_id;
-        }
-
-        t.get("1/boards/" + boardId + "/lists", {cards: 'open', card_fields: "name", fields: "name"}  , function(err, data) {
+        t.get("1/boards/" + inputs.board_id + "/lists", {cards: 'open', card_fields: "name", fields: "name"}  , function(err, data) {
             if (!err) {
-                this.complete(util.pickResult({data: data}, pickOutputs));
+                this.complete(util.pickOutputs({data: data}, pickOutputs));
             } else {
                 this.fail(err);
             }

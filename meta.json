@@ -30,6 +30,10 @@
             "title":"Card Name"
         }
     ],
+    "providers": [{
+        "name": "trello",
+        "scopes": [ "Read" ]
+    }],
     "icon": "trello",
     "title": "Trello Get Board Lists" /* Required.A display name for the module */
 }
